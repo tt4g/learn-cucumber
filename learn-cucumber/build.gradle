@@ -28,7 +28,7 @@ dependencies {
 
     testImplementation("org.assertj:assertj-core:${versions.assertjVersion}")
 
-    testImplementation("io.cucumber:cucumber-java8:${versions.cucumberVersion}")
+    testImplementation("io.cucumber:cucumber-java:${versions.cucumberVersion}")
 }
 
 tasks.named('test') {
