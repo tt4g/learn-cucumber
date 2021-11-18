@@ -1,0 +1,66 @@
+plugins {
+    id 'java-library'
+
+    // configured by `/build.gradle`.
+    id "jacoco"
+
+    // configured by `/build.gradle`.
+    id 'com.github.spotbugs'
+}
+
+apply(from: rootProject.file("gradle/versions.gradle"))
+
+configurations {
+    cucumberRuntime {
+        extendsFrom testImplementation
+    }
+}
+
+dependencies {
+    testImplementation(platform("org.junit:junit-bom:${versions.junitVersion}"))
+    testImplementation('org.junit.jupiter:junit-jupiter-api')
+    testImplementation('org.junit.jupiter:junit-jupiter-params')
+    testRuntimeOnly('org.junit.jupiter:junit-jupiter-engine')
+    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+    // Cucumber-JVM requires junit-vintage-engine.
+    // https://cucumber.io/docs/cucumber/api/#junit
+    testRuntimeOnly('org.junit.vintage:junit-vintage-engine')
+
+    testImplementation("org.mockito:mockito-core:${versions.mockitoVersion}")
+    testImplementation("org.mockito:mockito-junit-jupiter:${versions.mockitoVersion}")
+
+    testImplementation("org.assertj:assertj-core:${versions.assertjVersion}")
+
+    testImplementation("io.cucumber:cucumber-java8:${versions.cucumberVersion}")
+    testImplementation("io.cucumber:cucumber-junit:${versions.cucumberVersion}")
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+
+    // Always run cucumber task after test.
+    finalizedBy('cucumber')
+}
+
+// Run cucumber task.
+// https://cucumber.io/docs/tools/java/#build-tools
+tasks.register('cucumber') {
+    group('verification')
+    dependsOn(assemble, testClasses)
+    // Must be run after test task.
+    mustRunAfter(test)
+    doLast {
+        javaexec {
+            main = 'io.cucumber.core.cli.Main'
+            classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
+            args = [
+                '--plugin', 'pretty',
+                '--plugin', 'summary',
+                '--plugin', "html:${project.buildDir}/reports/cucumber.html",
+                '--glue', "${project.group}",
+                "${project.file("src/test/resources/features")}"]
+            // Ignore exit code because cucumber CLI returns non zero on test failure.
+            ignoreExitValue(true)
+        }
+    }
+}
