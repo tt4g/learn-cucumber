@@ -10,9 +10,30 @@ plugins {
 
 apply(from: rootProject.file("gradle/versions.gradle"))
 
+sourceSets {
+    cucumber {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir(file('src/feature/java'))
+        }
+
+        resources {
+            srcDir(file('src/feature/resources'))
+        }
+    }
+}
+
 configurations {
+    // `sourceSets.cucumber` will add `cucumberImplementation` to the classpath at build time.
+    // `cucumberImplementation` is a configuration that is automatically generated from `sourceSets.cucumber` definition.
+    // * https://docs.gradle.org/7.3/userguide/java_testing.html#sec:configuring_java_integration_tests
+    // * https://docs.gradle.org/7.3/userguide/building_java_projects.html#sec:java_source_sets
+    cucumberImplementation {
+        extendsFrom(testImplementation)
+    }
     cucumberRuntime {
-        extendsFrom testImplementation
+        extendsFrom(testImplementation)
     }
 }
 
@@ -48,13 +69,17 @@ tasks.register('cucumber') {
     doLast {
         javaexec {
             main = 'io.cucumber.core.cli.Main'
-            classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
+            classpath =
+                configurations.cucumberRuntime +
+                    sourceSets.main.output +
+                    sourceSets.test.output +
+                    sourceSets.cucumber.output
             args = [
                 '--plugin', 'pretty',
                 '--plugin', 'summary',
                 '--plugin', "html:${project.buildDir}/reports/cucumber.html",
                 '--glue', "${project.group}",
-                "${project.file("src/test/resources/features")}"]
+                "${project.file("src/feature/resources/features")}"]
             // Ignore exit code because cucumber CLI returns non zero on test failure.
             ignoreExitValue(true)
         }
